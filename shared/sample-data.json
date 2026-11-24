@@ -1,0 +1,87 @@
+{
+  "generation": [
+    { "date": "2026-10-01", "wastewater_m3": 420, "wet_sludge_kg": 1120, "moisture_pct": 94.2, "operating_days": 26 },
+    { "date": "2026-10-04", "wastewater_m3": 438, "wet_sludge_kg": 1185, "moisture_pct": 94.6, "operating_days": 26 },
+    { "date": "2026-10-07", "wastewater_m3": 395, "wet_sludge_kg": 1040, "moisture_pct": 93.8, "operating_days": 26 },
+    { "date": "2026-10-10", "wastewater_m3": 462, "wet_sludge_kg": 1260, "moisture_pct": 95.1, "operating_days": 27 },
+    { "date": "2026-10-13", "wastewater_m3": 410, "wet_sludge_kg": 1095, "moisture_pct": 94.0, "operating_days": 27 },
+    { "date": "2026-10-16", "wastewater_m3": 384, "wet_sludge_kg": 980, "moisture_pct": 93.4, "operating_days": 27 },
+    { "date": "2026-10-19", "wastewater_m3": 455, "wet_sludge_kg": 1210, "moisture_pct": 94.8, "operating_days": 26 },
+    { "date": "2026-10-22", "wastewater_m3": 472, "wet_sludge_kg": 1305, "moisture_pct": 95.3, "operating_days": 26 },
+    { "date": "2026-10-25", "wastewater_m3": 401, "wet_sludge_kg": 1060, "moisture_pct": 93.9, "operating_days": 26 },
+    { "date": "2026-10-28", "wastewater_m3": 366, "wet_sludge_kg": 945, "moisture_pct": 93.1, "operating_days": 25 },
+    { "date": "2026-11-03", "wastewater_m3": 448, "wet_sludge_kg": 1195, "moisture_pct": 94.5, "operating_days": 26 },
+    { "date": "2026-11-09", "wastewater_m3": 436, "wet_sludge_kg": 1140, "moisture_pct": 94.3, "operating_days": 26 },
+    { "date": "2026-11-15", "wastewater_m3": 478, "wet_sludge_kg": 1290, "moisture_pct": 95.0, "operating_days": 27 },
+    { "date": "2026-11-21", "wastewater_m3": 445, "wet_sludge_kg": 1175, "moisture_pct": 94.4, "operating_days": 27 }
+  ],
+  "lab": [
+    { "date": "2026-09-08", "sample_id": "LAB-2609-01", "ph": 7.1, "moisture_pct": 94.0, "total_solids_pct": 6.0, "volatile_solids_pct": 58.0, "oil_grease_mgkg": 320, "cod_mgl": 1850, "lead_mgkg": 2.4, "chromium_mgkg": 1.8, "cadmium_mgkg": 0.4, "nickel_mgkg": 3.1, "other_contaminants": "Sulphide: 12 mg/kg" },
+    { "date": "2026-09-15", "sample_id": "LAB-2609-02", "ph": 6.9, "moisture_pct": 94.4, "total_solids_pct": 5.6, "volatile_solids_pct": 61.0, "oil_grease_mgkg": 410, "cod_mgl": 2100, "lead_mgkg": 3.1, "chromium_mgkg": 2.2, "cadmium_mgkg": null, "nickel_mgkg": 4.0, "other_contaminants": "" },
+    { "date": "2026-09-22", "sample_id": "LAB-2609-03", "ph": 7.4, "moisture_pct": 93.6, "total_solids_pct": 6.4, "volatile_solids_pct": 55.0, "oil_grease_mgkg": 275, "cod_mgl": 1620, "lead_mgkg": 1.9, "chromium_mgkg": 1.1, "cadmium_mgkg": 0.3, "nickel_mgkg": 2.6, "other_contaminants": "" },
+    { "date": "2026-10-06", "sample_id": "LAB-2610-01", "ph": 7.0, "moisture_pct": 94.8, "total_solids_pct": 5.2, "volatile_solids_pct": 63.0, "oil_grease_mgkg": 520, "cod_mgl": 2450, "lead_mgkg": 4.2, "chromium_mgkg": 2.7, "cadmium_mgkg": 0.6, "nickel_mgkg": 5.2, "other_contaminants": "Phenols: 8 mg/kg" },
+    { "date": "2026-10-13", "sample_id": "LAB-2610-02", "ph": 6.5, "moisture_pct": 95.1, "total_solids_pct": 4.9, "volatile_solids_pct": 66.0, "oil_grease_mgkg": 680, "cod_mgl": 3100, "lead_mgkg": 6.8, "chromium_mgkg": 3.9, "cadmium_mgkg": 0.9, "nickel_mgkg": 7.4, "other_contaminants": "" },
+    { "date": "2026-10-20", "sample_id": "LAB-2610-03", "ph": 8.1, "moisture_pct": 93.2, "total_solids_pct": 6.8, "volatile_solids_pct": 52.0, "oil_grease_mgkg": 190, "cod_mgl": 1200, "lead_mgkg": 1.2, "chromium_mgkg": 0.8, "cadmium_mgkg": 0.2, "nickel_mgkg": 1.9, "other_contaminants": "" },
+    { "date": "2026-10-27", "sample_id": "LAB-2610-04", "ph": 7.2, "moisture_pct": 94.2, "total_solids_pct": 5.8, "volatile_solids_pct": 59.0, "oil_grease_mgkg": 355, "cod_mgl": 1980, "lead_mgkg": 2.8, "chromium_mgkg": 1.6, "cadmium_mgkg": 0.5, "nickel_mgkg": 3.4, "other_contaminants": "" },
+    { "date": "2026-11-04", "sample_id": "LAB-2611-01", "ph": 6.8, "moisture_pct": 94.6, "total_solids_pct": 5.4, "volatile_solids_pct": 64.0, "oil_grease_mgkg": 610, "cod_mgl": 2780, "lead_mgkg": 5.1, "chromium_mgkg": 3.2, "cadmium_mgkg": 0.7, "nickel_mgkg": 6.1, "other_contaminants": "Sulphide: 21 mg/kg" },
+    { "date": "2026-11-11", "sample_id": "LAB-2611-02", "ph": 7.6, "moisture_pct": 93.9, "total_solids_pct": 6.1, "volatile_solids_pct": 56.0, "oil_grease_mgkg": 240, "cod_mgl": 1480, "lead_mgkg": 2.0, "chromium_mgkg": 1.3, "cadmium_mgkg": null, "nickel_mgkg": 2.8, "other_contaminants": "" },
+    { "date": "2026-11-18", "sample_id": "LAB-2611-03", "ph": 7.3, "moisture_pct": 94.1, "total_solids_pct": 5.9, "volatile_solids_pct": 60.0, "oil_grease_mgkg": 380, "cod_mgl": 2040, "lead_mgkg": 2.6, "chromium_mgkg": 1.7, "cadmium_mgkg": 0.4, "nickel_mgkg": 3.2, "other_contaminants": "" }
+  ],
+  "handling": [
+    { "date": "2026-10-12", "process_group": "Thickening", "technology": "Gravity thickener", "initial_mass_kg": 1200, "initial_moisture_pct": 94.0, "final_moisture_pct": 91.0 },
+    { "date": "2026-10-14", "process_group": "Thickening", "technology": "Dissolved air flotation", "initial_mass_kg": 1200, "initial_moisture_pct": 94.0, "final_moisture_pct": 90.5 },
+    { "date": "2026-10-18", "process_group": "Thickening", "technology": "Mechanical thickening", "initial_mass_kg": 1200, "initial_moisture_pct": 94.0, "final_moisture_pct": 89.0 },
+    { "date": "2026-10-21", "process_group": "Dewatering", "technology": "Filter press", "initial_mass_kg": 1000, "initial_moisture_pct": 91.0, "final_moisture_pct": 70.0 },
+    { "date": "2026-10-23", "process_group": "Dewatering", "technology": "Belt filter press", "initial_mass_kg": 1000, "initial_moisture_pct": 91.0, "final_moisture_pct": 78.0 },
+    { "date": "2026-10-29", "process_group": "Dewatering", "technology": "Centrifuge", "initial_mass_kg": 1000, "initial_moisture_pct": 91.0, "final_moisture_pct": 74.0 },
+    { "date": "2026-11-05", "process_group": "Drying", "technology": "Solar drying", "initial_mass_kg": 600, "initial_moisture_pct": 70.0, "final_moisture_pct": 20.0 },
+    { "date": "2026-11-12", "process_group": "Drying", "technology": "Thermal drying", "initial_mass_kg": 600, "initial_moisture_pct": 70.0, "final_moisture_pct": 10.0 }
+  ],
+  "disposal": [
+    { "date": "2026-10-03", "quantity_kg": 1840, "facility": "Authorised TSDF — Karnataka", "manifest_no": "MFT-26-10-003", "transport_mode": "Covered truck" },
+    { "date": "2026-10-11", "quantity_kg": 1620, "facility": "Authorised TSDF — Karnataka", "manifest_no": "MFT-26-10-011", "transport_mode": "Covered truck" },
+    { "date": "2026-10-19", "quantity_kg": 1980, "facility": "Co-processing cement plant", "manifest_no": "MFT-26-10-019", "transport_mode": "Covered truck" },
+    { "date": "2026-10-27", "quantity_kg": 1710, "facility": "Authorised TSDF — Karnataka", "manifest_no": "MFT-26-10-027", "transport_mode": "Covered truck" },
+    { "date": "2026-11-05", "quantity_kg": 2050, "facility": "Co-processing cement plant", "manifest_no": "MFT-26-11-005", "transport_mode": "Covered truck" },
+    { "date": "2026-11-17", "quantity_kg": 1920, "facility": "Authorised TSDF — Karnataka", "manifest_no": "MFT-26-11-017", "transport_mode": "Covered truck" }
+  ],
+  "compliance": [
+    { "id": 1, "area": "Waste classification", "requirement": "Classify sludge as hazardous/non-hazardous based on representative laboratory analysis", "detail": "Characterisation complete for current quarter. Classification memo drafted, pending review.", "status": "Action required", "due_date": "2026-11-30", "note": "Review pending with ETP in-charge." },
+    { "id": 2, "area": "Laboratory testing", "requirement": "Maintain scheduled testing of sludge parameters and heavy metals", "detail": "Monthly test schedule followed; cadmium result pending for two samples.", "status": "Action required", "due_date": "2026-11-28", "note": "Two samples awaiting cadmium analysis." },
+    { "id": 3, "area": "Hazardous waste authorisation", "requirement": "Valid authorisation / consent for generation and storage of hazardous waste", "detail": "Copy of authorisation available on file.", "status": "Compliant", "due_date": "2027-03-31", "note": "" },
+    { "id": 4, "area": "Sludge storage", "requirement": "Covered, impervious and labelled sludge storage area", "detail": "Storage pad inspected; labelling to be refreshed in bay 2.", "status": "Action required", "due_date": "2026-12-05", "note": "Bay 2 label faded." },
+    { "id": 5, "area": "Leachate management", "requirement": "Leachate collection and return to ETP, no external discharge", "detail": "Leachate line and sump operational.", "status": "Compliant", "due_date": "2026-12-31", "note": "" },
+    { "id": 6, "area": "Transportation records", "requirement": "Maintain transport records for sludge movement off-site", "detail": "Transport register maintained; November entries not yet reconciled.", "status": "Action required", "due_date": "2026-11-29", "note": "Reconcile weighbridge tickets." },
+    { "id": 7, "area": "Authorised disposal facility", "requirement": "Disposal only through an authorised facility", "detail": "Facility authorisation copy received but validity not verified.", "status": "Information missing", "due_date": "2026-12-10", "note": "Request current authorisation copy." },
+    { "id": 8, "area": "Disposal manifests", "requirement": "Maintain manifest / EPR tracker for every disposal consignment", "detail": "Manifests filed for all October dispatches.", "status": "Compliant", "due_date": "2026-12-31", "note": "" },
+    { "id": 9, "area": "CPCB requirements", "requirement": "Compliance with applicable CPCB directions for wastewater and sludge", "detail": "Applicability assessment not documented for the current consent conditions.", "status": "Information missing", "due_date": "2026-12-15", "note": "Confirm latest CPCB directions." },
+    { "id": 10, "area": "KSPCB requirements", "requirement": "Compliance with applicable KSPCB consent conditions and returns", "detail": "Consent conditions reviewed; annual return in preparation.", "status": "Action required", "due_date": "2026-12-20", "note": "Return due before 31 Dec." },
+    { "id": 11, "area": "Storage capacity", "requirement": "Adequate covered storage capacity for at least 90 days of sludge generation", "detail": "Current covered storage capacity estimated at 75 days at present generation rate.", "status": "Action required", "due_date": "2027-01-15", "note": "Expansion proposal under review." },
+    { "id": 12, "area": "Disposal quantity reconciliation", "requirement": "Reconcile generated, stored and disposed sludge quantities", "detail": "Monthly reconciliation statement available for September only.", "status": "Information missing", "due_date": "2026-12-01", "note": "October and November statements pending." }
+  ],
+  "technology": {
+    "weights": {
+      "feasibility": 15,
+      "capex": 12,
+      "opex": 15,
+      "energy": 12,
+      "chemical": 8,
+      "space": 8,
+      "dewatering": 15,
+      "maintenance": 8,
+      "environmental": 7
+    },
+    "scores": {
+      "gravity-thickener": { "feasibility": 4, "capex": 5, "opex": 5, "energy": 5, "chemical": 4, "space": 2, "dewatering": 2, "maintenance": 4, "environmental": 4 },
+      "daf": { "feasibility": 4, "capex": 3, "opex": 3, "energy": 2, "chemical": 1, "space": 3, "dewatering": 3, "maintenance": 3, "environmental": 4 },
+      "mechanical-thickener": { "feasibility": 4, "capex": 3, "opex": 4, "energy": 3, "chemical": 3, "space": 3, "dewatering": 3, "maintenance": 3, "environmental": 4 },
+      "filter-press": { "feasibility": 5, "capex": 2, "opex": 3, "energy": 2, "chemical": 3, "space": 3, "dewatering": 5, "maintenance": 2, "environmental": 4 },
+      "belt-filter-press": { "feasibility": 4, "capex": 3, "opex": 3, "energy": 3, "chemical": 2, "space": 3, "dewatering": 4, "maintenance": 3, "environmental": 3 },
+      "centrifuge": { "feasibility": 5, "capex": 1, "opex": 2, "energy": 1, "chemical": 4, "space": 5, "dewatering": 5, "maintenance": 2, "environmental": 3 },
+      "screw-press": { "feasibility": 4, "capex": 3, "opex": 4, "energy": 4, "chemical": 3, "space": 4, "dewatering": 4, "maintenance": 4, "environmental": 4 },
+      "solar-drying": { "feasibility": 3, "capex": 5, "opex": 5, "energy": 5, "chemical": 5, "space": 1, "dewatering": 5, "maintenance": 5, "environmental": 5 },
+      "thermal-drying": { "feasibility": 3, "capex": 1, "opex": 1, "energy": 1, "chemical": 4, "space": 4, "dewatering": 5, "maintenance": 2, "environmental": 2 },
+      "waste-heat-drying": { "feasibility": 3, "capex": 2, "opex": 4, "energy": 4, "chemical": 5, "space": 3, "dewatering": 4, "maintenance": 3, "environmental": 5 }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Build output
+dist/
+.vite/
+
+# Local database and caches
+data/
+.pytest_cache/
+*.log
+
+# Environment files
+.env
+.env.*
