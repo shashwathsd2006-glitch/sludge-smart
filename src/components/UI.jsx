@@ -113,11 +113,13 @@ export function DataTable({ columns, rows, searchPlaceholder = 'Search recordsâ€
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let result = rows || [];
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const safeColumns = Array.isArray(columns) ? columns : [];
+    let result = safeRows;
     if (q) {
       result = result.filter((row) =>
-        (searchFields || columns.map((c) => c.key)).some((key) =>
-          String(row[key] ?? '').toLowerCase().includes(q)
+        (searchFields || safeColumns.map((c) => c.key)).some((key) =>
+          String(row?.[key] ?? '').toLowerCase().includes(q)
         )
       );
     }
@@ -152,13 +154,13 @@ export function DataTable({ columns, rows, searchPlaceholder = 'Search recordsâ€
             aria-label={searchPlaceholder}
           />
         </div>
-        <span className="table-count">{String(visible.length).padStart(2, '0')} / {String(rows.length).padStart(2, '0')} RECORDS</span>
+        <span className="table-count">{String(visible.length).padStart(2, '0')} / {String((Array.isArray(rows)?rows:[]).length).padStart(2, '0')} RECORDS</span>
       </div>
       <div className="table-scroll">
         <table>
           <thead>
             <tr>
-              {columns.map((column) => (
+              {(Array.isArray(columns) ? columns : []).map((column) => (
                 <th key={column.key} className={column.align === 'right' ? 'align-right' : ''}>
                   <button type="button" onClick={() => toggleSort(column.key)}>
                     {column.label}
@@ -172,13 +174,13 @@ export function DataTable({ columns, rows, searchPlaceholder = 'Search recordsâ€
           </thead>
           <tbody>
             {visible.length === 0 && (
-              <tr><td className="table-empty" colSpan={columns.length}>{empty}</td></tr>
+              <tr><td className="table-empty" colSpan={(Array.isArray(columns) ? columns : []).length || 1}>{empty}</td></tr>
             )}
             {visible.map((row, index) => (
-              <tr key={row.id ?? index}>
-                {columns.map((column) => (
+              <tr key={row?.id ?? index}>
+                {(Array.isArray(columns) ? columns : []).map((column) => (
                   <td key={column.key} className={column.align === 'right' ? 'align-right' : ''}>
-                    {column.render ? column.render(row) : (row[column.key] ?? 'â€”')}
+                    {column.render ? column.render(row || {}) : (row?.[column.key] ?? 'â€”')}
                   </td>
                 ))}
               </tr>
@@ -192,6 +194,28 @@ export function DataTable({ columns, rows, searchPlaceholder = 'Search recordsâ€
 
 export function EmptyState({ label }) {
   return <div className="empty-state">{label}</div>;
+}
+
+export function DataState({ loading, error, empty, children }) {
+  if (loading) return <p className="data-status">Loading recordsâ€¦</p>;
+  if (error) return <p className="data-status data-status-error">{error}</p>;
+  if (empty) return <p className="empty-state">No records match the current filters.</p>;
+  return children;
+}
+
+export function DateRangeFilter({ from, to, onFromChange, onToChange }) {
+  return (
+    <div className="date-filter">
+      <label>
+        <span>FROM</span>
+        <input className="input" type="date" value={from} onChange={(event) => onFromChange(event.target.value)} aria-label="Filter from date" />
+      </label>
+      <label>
+        <span>TO</span>
+        <input className="input" type="date" value={to} onChange={(event) => onToChange(event.target.value)} aria-label="Filter to date" />
+      </label>
+    </div>
+  );
 }
 
 export function KeyValue({ label, value, accent }) {

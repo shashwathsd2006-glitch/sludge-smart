@@ -19,6 +19,13 @@ export const shortDate = (value) => {
   return `${d} ${months[Number(m) - 1]} ${y.slice(2)}`;
 };
 
+export const withinDateRange = (row, from, to) => {
+  const value = String(row.date || '');
+  if (from && value < from) return false;
+  if (to && value > to) return false;
+  return true;
+};
+
 // Module 02 core calculations ------------------------------------------------
 export const drySolids = (wetKg, moisturePct) => wetKg * (100 - moisturePct) / 100;
 export const generationRate = (dryKg, wastewaterM3) => wastewaterM3 > 0 ? dryKg / wastewaterM3 : 0;
@@ -100,6 +107,7 @@ export function matrixResults(settings) {
   const weights = settings?.weights || {};
   const scores = settings?.scores || {};
   const totalWeight = CRITERIA.reduce((sum, c) => sum + (Number(weights[c.key]) || 0), 0);
+  const catalogueOrder = new Map(TECHNOLOGIES.map((tech, index) => [tech.id, index]));
 
   return TECHNOLOGIES.map((tech) => {
     const techScores = scores[tech.id] || {};
@@ -114,14 +122,23 @@ export function matrixResults(settings) {
       weighted,
       score: totalWeight > 0 ? weighted / totalWeight : 0,
     };
-  }).sort((a, b) => b.score - a.score);
+  }).sort((a, b) => b.score - a.score || catalogueOrder.get(a.id) - catalogueOrder.get(b.id));
 }
 
 export function normalizeWeights(weights) {
-  const total = CRITERIA.reduce((sum, c) => sum + (Number(weights[c.key]) || 0), 0);
-  if (total <= 0) return weights;
-  const raw = CRITERIA.map((c) => ({ key: c.key, value: (Number(weights[c.key]) || 0) / total * 100 }));
-  const rounded = raw.map((item) => ({ ...item, value: Math.round(item.value) }));
+  const values = CRITERIA.map((criterion) => {
+    const value = Number(weights?.[criterion.key]);
+    return { key: criterion.key, value: Number.isFinite(value) && value > 0 ? value : 0 };
+  });
+  const total = values.reduce((sum, item) => sum + item.value, 0);
+
+  if (total <= 0) {
+    const normalized = values.map((item) => ({ ...item, value: Math.floor(100 / CRITERIA.length) }));
+    normalized[0].value += 100 - normalized.reduce((sum, item) => sum + item.value, 0);
+    return Object.fromEntries(normalized.map((item) => [item.key, item.value]));
+  }
+
+  const rounded = values.map((item) => ({ ...item, value: Math.round(item.value / total * 100) }));
   const drift = 100 - rounded.reduce((sum, item) => sum + item.value, 0);
   const max = rounded.reduce((best, item) => item.value > best.value ? item : best, rounded[0]);
   max.value += drift;

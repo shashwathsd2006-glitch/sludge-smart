@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BarComparisonChart, TrendChart } from '../components/Charts.jsx';
-import { Badge, DataTable, Metric, PageHeader, Panel, SectionTitle, StatusPill } from '../components/UI.jsx';
+import { Badge, DataState, DataTable, Metric, PageHeader, Panel, SectionTitle, StatusPill } from '../components/UI.jsx';
 import { useCollection } from '../hooks/useData.js';
 import { generationMetrics, int, num, shortDate } from '../lib/calc.js';
 
@@ -16,8 +16,8 @@ export default function Dashboard() {
   const latest = [...generation.data].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
   const metrics = latest ? generationMetrics(latest) : null;
 
-  const currentMonth = latest?.date?.slice(0, 7);
-  const monthDisposals = disposal.data.filter((row) => row.date?.startsWith(currentMonth || ''));
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const monthDisposals = disposal.data.filter((row) => row.date?.startsWith(currentMonth));
   const disposalQty = monthDisposals.reduce((sum, row) => sum + Number(row.quantity_kg || 0), 0);
 
   const trend = genRows.map((row) => {
@@ -33,6 +33,8 @@ export default function Dashboard() {
 
   const labRecent = [...lab.data].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 5);
   const disposalRecent = [...disposal.data].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 5);
+  const sampleOnly = genRows.length > 0 && genRows.every((row) => row.source === 'sample');
+  const loadError = generation.error || lab.error || disposal.error || compliance.error;
 
   return (
     <div className="page">
@@ -70,6 +72,7 @@ export default function Dashboard() {
           <strong>ESTIMATES ONLY — VERIFY DATA</strong>
         </div>
       </div>
+      {loadError && <p className="data-status data-status-error">{loadError}</p>}
 
       <SectionTitle
         number="01"
@@ -91,29 +94,33 @@ export default function Dashboard() {
         note="Chronological view of logged sludge generation and moisture. Hover for exact values."
       />
       <div className="grid-2">
-        <Panel label="FIG. 01" title="SLUDGE GENERATION TREND" action={<Badge>ILLUSTRATIVE SAMPLE</Badge>}>
-          <TrendChart
-            data={trend}
-            series={[
-              { key: 'wet', name: 'Wet sludge (kg/d)', color: '#E30613' },
-              { key: 'dry', name: 'Dry solids (kg/d)', color: '#111111' },
-            ]}
-            unit="kg/day"
-          />
-          <div className="chart-legend">
-            <span><i style={{ background: '#E30613' }} />WET SLUDGE</span>
-            <span><i style={{ background: '#111111' }} />DRY SOLIDS</span>
-          </div>
+        <Panel label="FIG. 01" title="SLUDGE GENERATION TREND" action={<Badge>{sampleOnly ? 'SAMPLE DATA' : 'SAMPLE + USER DATA'}</Badge>}>
+          <DataState loading={generation.loading} error={generation.error} empty={!trend.length}>
+            <TrendChart
+              data={trend}
+              series={[
+                { key: 'wet', name: 'Wet sludge (kg/d)', color: '#E30613' },
+                { key: 'dry', name: 'Dry solids (kg/d)', color: '#111111' },
+              ]}
+              unit="kg/day"
+            />
+            <div className="chart-legend">
+              <span><i style={{ background: '#E30613' }} />WET SLUDGE</span>
+              <span><i style={{ background: '#111111' }} />DRY SOLIDS</span>
+            </div>
+          </DataState>
         </Panel>
-        <Panel label="FIG. 02" title="MOISTURE TREND" action={<Badge>ILLUSTRATIVE SAMPLE</Badge>}>
-          <TrendChart
-            data={trend}
-            series={[{ key: 'moisture', name: 'Moisture (%)', color: '#E30613' }]}
-            unit="%"
-            domain={[90, 97]}
-            reference={{ value: 94, label: '94% GUIDE' }}
-          />
-          <p className="panel-footnote">Guide line is a visual aid, not a regulatory limit.</p>
+        <Panel label="FIG. 02" title="MOISTURE TREND" action={<Badge>{sampleOnly ? 'SAMPLE DATA' : 'SAMPLE + USER DATA'}</Badge>}>
+          <DataState loading={generation.loading} error={generation.error} empty={!trend.length}>
+            <TrendChart
+              data={trend}
+              series={[{ key: 'moisture', name: 'Moisture (%)', color: '#E30613' }]}
+              unit="%"
+              domain={[90, 97]}
+              reference={{ value: 94, label: '94% GUIDE' }}
+            />
+            <p className="panel-footnote">Guide line is a visual aid, not a regulatory limit.</p>
+          </DataState>
         </Panel>
       </div>
 
@@ -128,36 +135,40 @@ export default function Dashboard() {
           title="RECENT LABORATORY RECORDS"
           action={<Link className="text-link" to="/characterisation">OPEN MODULE →</Link>}
         >
-          <DataTable
-            rows={labRecent}
-            columns={[
-              { key: 'date', label: 'DATE', render: (row) => shortDate(row.date) },
-              { key: 'sample_id', label: 'SAMPLE ID' },
-              { key: 'ph', label: 'pH', align: 'right', render: (row) => num(row.ph, 1) },
-              { key: 'moisture_pct', label: 'MOIST %', align: 'right', render: (row) => num(row.moisture_pct) },
-              { key: 'cadmium_mgkg', label: 'Cd', align: 'right', render: (row) => row.cadmium_mgkg == null ? <span className="muted">MISSING</span> : num(row.cadmium_mgkg, 1) },
-              { key: 'source', label: 'SOURCE', render: (row) => <StatusPill status={row.source === 'sample' ? 'Sample' : 'User'} /> },
-            ]}
-            searchPlaceholder="Search lab records…"
-            searchFields={['sample_id', 'date']}
-          />
+          <DataState loading={lab.loading} error={lab.error} empty={!labRecent.length}>
+            <DataTable
+              rows={labRecent}
+              columns={[
+                { key: 'date', label: 'DATE', render: (row) => shortDate(row.date) },
+                { key: 'sample_id', label: 'SAMPLE ID' },
+                { key: 'ph', label: 'pH', align: 'right', render: (row) => num(row.ph, 1) },
+                { key: 'moisture_pct', label: 'MOIST %', align: 'right', render: (row) => num(row.moisture_pct) },
+                { key: 'cadmium_mgkg', label: 'Cd', align: 'right', render: (row) => row.cadmium_mgkg == null ? <span className="muted">MISSING</span> : num(row.cadmium_mgkg, 1) },
+                { key: 'source', label: 'SOURCE', render: (row) => <StatusPill status={row.source === 'sample' ? 'Sample' : 'User'} /> },
+              ]}
+              searchPlaceholder="Search lab records…"
+              searchFields={['sample_id', 'date']}
+            />
+          </DataState>
         </Panel>
         <Panel
           label="DISPOSAL / 06"
           title="RECENT SLUDGE DISPOSAL RECORDS"
           action={<Link className="text-link" to="/compliance">OPEN MODULE →</Link>}
         >
-          <DataTable
-            rows={disposalRecent}
-            columns={[
-              { key: 'date', label: 'DATE', render: (row) => shortDate(row.date) },
-              { key: 'quantity_kg', label: 'QUANTITY', align: 'right', render: (row) => `${int(row.quantity_kg)} kg` },
-              { key: 'facility', label: 'FACILITY' },
-              { key: 'manifest_no', label: 'MANIFEST' },
-            ]}
-            searchPlaceholder="Search dispatches…"
-            searchFields={['facility', 'manifest_no', 'date']}
-          />
+          <DataState loading={disposal.loading} error={disposal.error} empty={!disposalRecent.length}>
+            <DataTable
+              rows={disposalRecent}
+              columns={[
+                { key: 'date', label: 'DATE', render: (row) => shortDate(row.date) },
+                { key: 'quantity_kg', label: 'QUANTITY', align: 'right', render: (row) => `${int(row.quantity_kg)} kg` },
+                { key: 'facility', label: 'FACILITY' },
+                { key: 'manifest_no', label: 'MANIFEST' },
+              ]}
+              searchPlaceholder="Search dispatches…"
+              searchFields={['facility', 'manifest_no', 'date']}
+            />
+          </DataState>
         </Panel>
       </div>
 

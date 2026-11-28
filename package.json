@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "test:generation": "node --test frontend-tests/generation.test.mjs",
+    "test:handling": "node --test frontend-tests/handling.test.mjs",
+    "test:technology": "node --test frontend-tests/technology.test.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0"
   },

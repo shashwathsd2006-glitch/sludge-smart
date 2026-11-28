@@ -9,12 +9,35 @@ labelled as illustrative in the interface.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
+from contextlib import closing, contextmanager
 from pathlib import Path
 
+from .config import DB_PATH
+
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = ROOT / "data" / "sludge_smart.db"
 SAMPLE_PATH = ROOT / "shared" / "sample-data.json"
+
+ALLOWED_TABLES = frozenset(
+    {
+        "generation_records",
+        "lab_records",
+        "handling_runs",
+        "disposal_records",
+        "compliance_items",
+        "technology_settings",
+        "users",
+        "roles",
+        "permissions",
+        "user_roles",
+        "role_permissions",
+        "user_sessions",
+        "audit_logs",
+        "schema_migrations",
+    }
+)
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS generation_records (
@@ -67,7 +90,9 @@ CREATE TABLE IF NOT EXISTS disposal_records (
     manifest_no TEXT NOT NULL,
     transport_mode TEXT NOT NULL DEFAULT '',
     source TEXT NOT NULL DEFAULT 'user',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00+00:00',
+    updated_by TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS compliance_items (
@@ -78,7 +103,10 @@ CREATE TABLE IF NOT EXISTS compliance_items (
     status TEXT NOT NULL DEFAULT 'Information missing',
     due_date TEXT,
     note TEXT NOT NULL DEFAULT '',
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    source TEXT NOT NULL DEFAULT 'user',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS technology_settings (
@@ -95,11 +123,49 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
 
+def validate_table(table: str) -> str:
+    if table not in ALLOWED_TABLES:
+        raise ValueError(f"table not allowed: {table}")
+    return table
+
+
+def validate_columns(columns) -> tuple[str, ...]:
+    names = tuple(str(name) for name in columns)
+    if not names or any(not _IDENTIFIER.fullmatch(name) for name in names):
+        raise ValueError("invalid column name")
+    if len(set(names)) != len(names):
+        raise ValueError("duplicate column name")
+    return names
+
+
+@contextmanager
+def _use(conn: sqlite3.Connection | None):
+    if conn is not None:
+        yield conn
+        return
+    with closing(connect()) as connection:
+        with connection:
+            yield connection
+
+
+@contextmanager
+def transaction() -> sqlite3.Connection:
+    with closing(connect()) as conn:
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+
 def init_db() -> None:
-    with connect() as conn:
+    with transaction() as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(SCHEMA)
         empty = all(
             conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
@@ -159,8 +225,8 @@ def seed(conn: sqlite3.Connection) -> None:
     for row in sample["compliance"]:
         conn.execute(
             """INSERT INTO compliance_items
-               (id, area, requirement, detail, status, due_date, note)
-               VALUES (:id, :area, :requirement, :detail, :status, :due_date, :note)""",
+               (id, area, requirement, detail, status, due_date, note, source, created_at, updated_at, updated_by)
+               VALUES (:id, :area, :requirement, :detail, :status, :due_date, :note, 'sample', '1970-01-01T00:00:00+00:00', '1970-01-01T00:00:00+00:00', '')""",
             row,
         )
 
@@ -172,37 +238,48 @@ def seed(conn: sqlite3.Connection) -> None:
     )
 
 
-def fetch_all(query: str, params: tuple = ()) -> list[dict]:
-    with connect() as conn:
-        return [dict(row) for row in conn.execute(query, params).fetchall()]
+def fetch_all(query: str, params: tuple = (), conn: sqlite3.Connection | None = None) -> list[dict]:
+    if not query.lstrip().upper().startswith("SELECT"):
+        raise ValueError("fetch_all accepts SELECT statements only")
+    with _use(conn) as connection:
+        return [dict(row) for row in connection.execute(query, params).fetchall()]
 
 
-def fetch_one(query: str, params: tuple = ()) -> dict | None:
-    with connect() as conn:
-        row = conn.execute(query, params).fetchone()
+def fetch_one(query: str, params: tuple = (), conn: sqlite3.Connection | None = None) -> dict | None:
+    if not query.lstrip().upper().startswith("SELECT"):
+        raise ValueError("fetch_one accepts SELECT statements only")
+    with _use(conn) as connection:
+        row = connection.execute(query, params).fetchone()
         return dict(row) if row else None
 
 
-def insert(table: str, values: dict) -> dict:
-    columns = ", ".join(values.keys())
-    placeholders = ", ".join(f":{key}" for key in values)
-    with connect() as conn:
-        cursor = conn.execute(
+def insert(table: str, values: dict, conn: sqlite3.Connection | None = None) -> dict:
+    validate_table(table)
+    names = validate_columns(values.keys())
+    columns = ", ".join(names)
+    placeholders = ", ".join(f":{name}" for name in names)
+    with _use(conn) as connection:
+        cursor = connection.execute(
             f"INSERT INTO {table} ({columns}) VALUES ({placeholders})", values
         )
         new_id = cursor.lastrowid
-    return fetch_one(f"SELECT * FROM {table} WHERE id = ?", (new_id,))
+        return fetch_one(f"SELECT * FROM {table} WHERE id = ?", (new_id,), conn=connection)
 
 
-def update(table: str, record_id: int, values: dict) -> dict | None:
-    assignments = ", ".join(f"{key} = :{key}" for key in values)
+def update(
+    table: str, record_id: int, values: dict, conn: sqlite3.Connection | None = None
+) -> dict | None:
+    validate_table(table)
+    names = validate_columns(values.keys())
+    assignments = ", ".join(f"{name} = :{name}" for name in names)
     params = {"id": record_id, **values}
-    with connect() as conn:
-        conn.execute(f"UPDATE {table} SET {assignments} WHERE id = :id", params)
-    return fetch_one(f"SELECT * FROM {table} WHERE id = ?", (record_id,))
+    with _use(conn) as connection:
+        connection.execute(f"UPDATE {table} SET {assignments} WHERE id = :id", params)
+        return fetch_one(f"SELECT * FROM {table} WHERE id = ?", (record_id,), conn=connection)
 
 
-def delete(table: str, record_id: int) -> bool:
-    with connect() as conn:
-        cursor = conn.execute(f"DELETE FROM {table} WHERE id = ?", (record_id,))
+def delete(table: str, record_id: int, conn: sqlite3.Connection | None = None) -> bool:
+    validate_table(table)
+    with _use(conn) as connection:
+        cursor = connection.execute(f"DELETE FROM {table} WHERE id = ?", (record_id,))
         return cursor.rowcount > 0

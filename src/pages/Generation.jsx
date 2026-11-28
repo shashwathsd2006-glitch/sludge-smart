@@ -1,76 +1,110 @@
 import { useMemo, useState } from 'react';
 import { BarComparisonChart, TrendChart } from '../components/Charts.jsx';
-import { Badge, Button, DataTable, Field, Metric, PageHeader, Panel, SectionTitle } from '../components/UI.jsx';
+import { Badge, Button, DataState, DataTable, DateRangeFilter, Field, Metric, PageHeader, Panel, SectionTitle } from '../components/UI.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useCollection } from '../hooks/useData.js';
-import { generationMetrics, int, num, shortDate } from '../lib/calc.js';
-
-const today = () => new Date().toISOString().slice(0, 10);
-const blank = () => ({ date: today(), wastewater_m3: '', wet_sludge_kg: '', moisture_pct: '', operating_days: '26' });
-
-function validate(form) {
-  const errors = {};
-  if (!form.date) errors.date = 'Date is required.';
-  const ww = Number(form.wastewater_m3);
-  const wet = Number(form.wet_sludge_kg);
-  const moisture = Number(form.moisture_pct);
-  const days = Number(form.operating_days);
-  if (!form.wastewater_m3 || !Number.isFinite(ww) || ww <= 0) errors.wastewater_m3 = 'Enter a value greater than 0.';
-  if (!form.wet_sludge_kg || !Number.isFinite(wet) || wet <= 0) errors.wet_sludge_kg = 'Enter a value greater than 0.';
-  if (form.moisture_pct === '' || !Number.isFinite(moisture) || moisture < 0 || moisture >= 100) errors.moisture_pct = 'Use a value from 0 to below 100.';
-  if (!form.operating_days || !Number.isFinite(days) || days <= 0 || days > 31) errors.operating_days = 'Use 1–31 operating days.';
-  return errors;
-}
+import { generationMetrics, int, num, shortDate, withinDateRange } from '../lib/calc.js';
+import {
+  blankGenerationForm,
+  generationFormFromRecord,
+  generationFormMetrics,
+  latestGenerationRecord,
+  updateGenerationField,
+  validateGenerationForm,
+} from '../lib/generation.js';
+import { can } from '../lib/permissions.js';
 
 export default function Generation() {
+  const { user } = useAuth();
   const collection = useCollection('generation');
-  const [form, setForm] = useState(blank);
+  const canWrite = can(user, 'generation:write');
+  const canDelete = can(user, 'generation:delete');
+  const [form, setForm] = useState(() => blankGenerationForm());
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const setField = (key) => (event) => {
-    setForm((current) => ({ ...current, [key]: event.target.value }));
+    const value = event.target.value;
+    setForm((current) => updateGenerationField(current, key, value));
     setMessage('');
   };
 
-  const preview = useMemo(() => {
-    if (Object.keys(validate(form)).length) return null;
-    return generationMetrics({
-      wastewater_m3: Number(form.wastewater_m3),
-      wet_sludge_kg: Number(form.wet_sludge_kg),
-      moisture_pct: Number(form.moisture_pct),
-      operating_days: Number(form.operating_days),
-    });
-  }, [form]);
+  const reset = () => {
+    setForm(blankGenerationForm());
+    setErrors({});
+    setEditing(null);
+    setMessage('');
+  };
+
+  const preview = useMemo(() => generationFormMetrics(form), [form]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const found = validate(form);
+    const found = validateGenerationForm(form);
     setErrors(found);
     if (Object.keys(found).length) {
       setMessage('Correct the highlighted fields before saving.');
       return;
     }
+    const payload = {
+      date: form.date,
+      wastewater_m3: Number(form.wastewater_m3),
+      wet_sludge_kg: Number(form.wet_sludge_kg),
+      moisture_pct: Number(form.moisture_pct),
+      operating_days: Number(form.operating_days),
+    };
     try {
-      await collection.add({
-        date: form.date,
-        wastewater_m3: Number(form.wastewater_m3),
-        wet_sludge_kg: Number(form.wet_sludge_kg),
-        moisture_pct: Number(form.moisture_pct),
-        operating_days: Number(form.operating_days),
-      });
-      setMessage('Record saved to the database.');
-      setForm((current) => ({ ...blank(), operating_days: current.operating_days }));
+      if (editing !== null) {
+        await collection.update(editing, payload);
+        setMessage(`Record ${editing} updated in the database.`);
+      } else {
+        await collection.add(payload);
+        setMessage('Record saved to the database.');
+      }
+      reset();
     } catch (error) {
       setMessage(`Could not save: ${error.message}`);
     }
   };
 
-  const sorted = [...collection.data].sort((a, b) => String(b.date).localeCompare(String(a.date)));
-  const trend = [...collection.data].sort((a, b) => String(a.date).localeCompare(String(b.date))).map((row) => {
-    const m = generationMetrics(row);
-    return { date: row.date, wet: m.wet, dry: m.dry, monthly: m.monthly, rate: m.rate };
-  });
-  const latest = sorted[0] ? generationMetrics(sorted[0]) : null;
+  const startEdit = (row) => {
+    setEditing(row.id);
+    setForm(generationFormFromRecord(row));
+    setErrors({});
+    setMessage(`Editing record ${row.id}. Save to apply changes.`);
+  };
+
+  const confirmRemove = async (row) => {
+    if (!window.confirm(`Delete generation record ${row.id}? This cannot be undone.`)) return;
+    try {
+      await collection.remove(row.id);
+      setMessage(`Record ${row.id} deleted.`);
+      if (editing === row.id) reset();
+    } catch (error) {
+      setMessage(`Could not delete: ${error.message}`);
+    }
+  };
+
+  const filtered = useMemo(
+    () => collection.data.filter((row) => withinDateRange(row, dateFrom, dateTo)),
+    [collection.data, dateFrom, dateTo],
+  );
+  const sorted = useMemo(
+    () => [...filtered].sort((a, b) => String(b.date).localeCompare(String(a.date))),
+    [filtered],
+  );
+  const trend = useMemo(
+    () => [...filtered].sort((a, b) => String(a.date).localeCompare(String(b.date))).map((row) => {
+      const m = generationMetrics(row);
+      return { date: row.date, wet: m.wet, dry: m.dry, monthly: m.monthly, rate: m.rate };
+    }),
+    [filtered],
+  );
+  const latestRecord = useMemo(() => latestGenerationRecord(sorted), [sorted]);
+  const latest = latestRecord ? generationMetrics(latestRecord) : null;
 
   return (
     <div className="page">
@@ -87,7 +121,7 @@ export default function Generation() {
       />
 
       <div className="grid-generation">
-        <Panel label="INPUT / 01" title="DAILY OPERATING DATA" className="form-panel">
+        <Panel label="INPUT / 01" title={editing !== null ? `EDIT RECORD ${editing}` : 'DAILY OPERATING DATA'} className="form-panel">
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-grid">
               <Field label="DATE" error={errors.date}>
@@ -107,8 +141,9 @@ export default function Generation() {
               </Field>
             </div>
             <div className="form-actions">
-              <Button type="submit">SAVE GENERATION RECORD →</Button>
-              <Button type="button" variant="ghost" onClick={() => { setForm(blank()); setErrors({}); setMessage(''); }}>RESET</Button>
+              {canWrite && <Button type="submit">{editing !== null ? 'UPDATE RECORD →' : 'SAVE GENERATION RECORD →'}</Button>}
+              {canWrite && <Button type="button" variant="ghost" onClick={reset}>{editing !== null ? 'CANCEL EDIT' : 'RESET'}</Button>}
+              {!canWrite && <span className="form-message message-error">READ ONLY — ASK AN ADMINISTRATOR OR OPERATOR TO SAVE.</span>}
             </div>
             {message && <p className={`form-message ${message.startsWith('Correct') || message.startsWith('Could') ? 'message-error' : ''}`}>{message}</p>}
           </form>
@@ -141,7 +176,7 @@ export default function Generation() {
         </Panel>
       </div>
 
-      <SectionTitle number="01" title="PRODUCTION SUMMARY" note={`Based on the latest saved record${latest ? ` · ${shortDate(sorted[0].date)}` : ''}.`} />
+      <SectionTitle number="01" title="PRODUCTION SUMMARY" note={`Based on the latest saved record${latestRecord ? ` · ${shortDate(latestRecord.date)}` : ''}.`} />
       <div className="metric-grid metric-grid-5">
         <Metric label="DAILY WET SLUDGE" value={latest ? int(latest.wet) : '—'} unit="kg/day" accent />
         <Metric label="DAILY DRY SLUDGE" value={latest ? num(latest.dry) : '—'} unit="kg/day" />
@@ -150,23 +185,35 @@ export default function Generation() {
         <Metric label="PER m³ WASTEWATER" value={latest ? num(latest.rate, 3) : '—'} unit="kgDS/m³" accent />
       </div>
 
-      <SectionTitle number="02" title="HISTORICAL DATA" note="Search, sort or delete records. Every entry shows its source." />
+      <SectionTitle
+        number="02"
+        title="HISTORICAL DATA"
+        note="Filter by date, search, sort, edit or delete records. Every entry shows its source."
+        action={<DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} />}
+      />
       <div className="grid-2">
         <Panel label="TABLE / 01" title="GENERATION LOG" action={<Badge>SOURCE LABELLED</Badge>}>
-          <DataTable
-            rows={sorted.map((row) => ({ ...row, ...generationMetrics(row) }))}
-            columns={[
-              { key: 'date', label: 'DATE', render: (row) => shortDate(row.date) },
-              { key: 'wastewater_m3', label: 'm³', align: 'right', render: (row) => int(row.wastewater_m3) },
-              { key: 'wet', label: 'WET KG', align: 'right', render: (row) => int(row.wet) },
-              { key: 'dry', label: 'DRY KG', align: 'right', render: (row) => num(row.dry) },
-              { key: 'rate', label: 'KGDS/m³', align: 'right', render: (row) => num(row.rate, 3) },
-              { key: 'source', label: 'SOURCE', render: (row) => <Badge type={row.source === 'sample' ? 'sample' : 'user'}>{row.source === 'sample' ? 'SAMPLE' : 'USER'}</Badge> },
-              { key: 'actions', label: '', render: (row) => <button className="row-delete" type="button" onClick={() => collection.remove(row.id)} aria-label={`Delete record ${row.id}`}>×</button> },
-            ]}
-            searchFields={['date', 'source']}
-            initialSort={{ key: 'date', dir: 'desc' }}
-          />
+          <DataState loading={collection.loading} error={collection.error} empty={!sorted.length}>
+            <DataTable
+              rows={sorted.map((row) => ({ ...row, ...generationMetrics(row) }))}
+              columns={[
+                { key: 'date', label: 'DATE', render: (row) => shortDate(row.date) },
+                { key: 'wastewater_m3', label: 'm³', align: 'right', render: (row) => int(row.wastewater_m3) },
+                { key: 'wet', label: 'WET KG', align: 'right', render: (row) => int(row.wet) },
+                { key: 'dry', label: 'DRY KG', align: 'right', render: (row) => num(row.dry) },
+                { key: 'rate', label: 'KGDS/m³', align: 'right', render: (row) => num(row.rate, 3) },
+                { key: 'source', label: 'SOURCE', render: (row) => <Badge type={row.source === 'sample' ? 'sample' : 'user'}>{row.source === 'sample' ? 'SAMPLE' : 'USER'}</Badge> },
+                { key: 'actions', label: '', render: (row) => (
+                  <div className="row-actions">
+                    {canWrite && <button className="row-edit" type="button" onClick={() => startEdit(row)} aria-label={`Edit record ${row.id}`}>EDIT</button>}
+                    {canDelete && <button className="row-delete" type="button" onClick={() => confirmRemove(row)} aria-label={`Delete record ${row.id}`}>×</button>}
+                  </div>
+                ) },
+              ]}
+              searchFields={['date', 'source']}
+              initialSort={{ key: 'date', dir: 'desc' }}
+            />
+          </DataState>
         </Panel>
         <Panel label="FIG. 01" title="WET VS DRY SLUDGE">
           <TrendChart

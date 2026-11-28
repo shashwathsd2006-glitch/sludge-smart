@@ -1,17 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BarComparisonChart } from '../components/Charts.jsx';
 import { Button, Callout, DataTable, KeyValue, PageHeader, Panel, SectionTitle } from '../components/UI.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { CRITERIA, TECHNOLOGIES } from '../data/technologies.js';
 import { useCollection, useSettings } from '../hooks/useData.js';
-import { generationMetrics, int, matrixResults, normalizeWeights, num } from '../lib/calc.js';
+import { int, matrixResults, normalizeWeights, num } from '../lib/calc.js';
+import { can } from '../lib/permissions.js';
+import { annualWetTonnesFromGeneration, sanitizeScore, sanitizeWeight } from '../lib/technology.js';
 
 export default function Technology() {
-  const { settings, loading, save } = useSettings();
+  const { user } = useAuth();
+  const canWrite = can(user, 'technology:write');
+  const { settings, loading, error, save } = useSettings();
   const generation = useCollection('generation');
   const [draft, setDraft] = useState(null);
   const [message, setMessage] = useState('');
 
-  useEffect(() => { if (settings) setDraft(structuredClone(settings)); }, [settings]);
+  useEffect(() => {
+    if (!settings) return;
+    setDraft((current) => {
+      if (current?.updated_at && current.updated_at === settings.updated_at) return current;
+      return structuredClone(settings);
+    });
+  }, [settings]);
 
   const results = useMemo(() => draft ? matrixResults(draft) : [], [draft]);
   const totalWeight = draft ? CRITERIA.reduce((sum, c) => sum + Number(draft.weights[c.key] || 0), 0) : 0;
@@ -19,30 +30,40 @@ export default function Technology() {
     ? [...CRITERIA].sort((a, b) => Number(draft.weights[b.key] || 0) - Number(draft.weights[a.key] || 0)).slice(0, 3)
     : [];
 
-  const latestGen = [...generation.data].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
-  const annualWetTonnes = latestGen ? generationMetrics(latestGen).annual / 1000 : 0;
+  const annualWetTonnes = annualWetTonnesFromGeneration(generation.data);
 
-  if (loading || !draft) {
-    return <div className="page"><p className="empty-state">Loading decision matrix…</p></div>;
+  if (loading) {
+    return <div className="page"><p className="data-status">Loading decision matrix…</p></div>;
+  }
+  if (!draft) {
+    return <div className="page"><p className="data-status data-status-error">{error || 'No decision matrix is available.'}</p></div>;
   }
 
   const setWeight = (key, value) => {
-    setDraft((current) => ({ ...current, weights: { ...current.weights, [key]: Number(value) } }));
+    setDraft((current) => ({ ...current, weights: { ...current.weights, [key]: sanitizeWeight(value) } }));
     setMessage('');
   };
 
   const setScore = (techId, key, value) => {
-    const parsed = Math.min(5, Math.max(1, Number(value) || 1));
-    setDraft((current) => ({
-      ...current,
-      scores: { ...current.scores, [techId]: { ...current.scores[techId], [key]: parsed } },
-    }));
+    const parsed = sanitizeScore(value);
+    setDraft((current) => {
+      if (!current?.scores?.[techId]) return current;
+      return {
+        ...current,
+        scores: {
+          ...current.scores,
+          [techId]: { ...current.scores[techId], [key]: parsed },
+        },
+      };
+    });
     setMessage('');
   };
 
   const handleSave = async () => {
+    const payload = { weights: draft.weights, scores: draft.scores };
     try {
-      await save({ weights: draft.weights, scores: draft.scores });
+      const saved = await save(payload);
+      setDraft(structuredClone(saved));
       setMessage('Decision matrix saved.');
     } catch (error) {
       setMessage(`Could not save: ${error.message}`);
@@ -67,9 +88,11 @@ export default function Technology() {
       />
 
       <Callout title="DECISION SUPPORT — NOT A CERTIFICATION">
-        Scores are user-assessed (1 = least favourable, 5 = most favourable). Cost and energy figures are planning estimates,
-        not quotations. The recommendation is a comparison aid; site trials and regulatory review remain necessary.
+        Scores are user-assessed (1 = least favourable, 5 = most favourable). Cost, energy, chemical and space figures are
+        illustrative planning estimates from the shipped technology reference table, not quotations or verified site data.
+        The recommendation is a comparison aid; site trials, vendor confirmation and regulatory review remain necessary.
       </Callout>
+      {error && <p className="data-status data-status-error">{error}</p>}
 
       <SectionTitle
         number="01"
@@ -95,7 +118,8 @@ export default function Technology() {
           ))}
         </div>
         <div className="form-actions">
-          <Button onClick={handleSave}>SAVE MATRIX →</Button>
+          {canWrite && <Button onClick={handleSave}>SAVE MATRIX →</Button>}
+          {!canWrite && <span className="form-message inline message-error">READ ONLY — ADMINISTRATOR ROLE REQUIRED TO SAVE.</span>}
           {message && <span className={`form-message inline ${message.startsWith('Could') ? 'message-error' : ''}`}>{message}</span>}
         </div>
       </Panel>
@@ -104,37 +128,43 @@ export default function Technology() {
       <Panel label="MATRIX / 01" title="TECHNOLOGY SCORING" action={<BadgeText>1 = LOW · 5 = HIGH</BadgeText>}>
         <div className="matrix-scroll">
           <table className="matrix-table">
+            <colgroup>
+              <col className="matrix-tech-col" />
+              {CRITERIA.map((criterion) => <col key={criterion.key} className="matrix-criterion-col" />)}
+              <col className="matrix-score-col" />
+            </colgroup>
             <thead>
               <tr>
-                <th>TECHNOLOGY</th>
-                {CRITERIA.map((criterion) => <th key={criterion.key}>{criterion.short}</th>)}
-                <th>WEIGHTED / 5</th>
+                <th scope="col" className="matrix-tech-col">TECHNOLOGY</th>
+                {CRITERIA.map((criterion) => <th scope="col" key={criterion.key} className="matrix-criterion-col">{criterion.short}</th>)}
+                <th scope="col" className="matrix-score-col">WEIGHTED / 5</th>
               </tr>
               <tr className="matrix-weight-row">
-                <th>APPLIED WEIGHT</th>
-                {CRITERIA.map((criterion) => <th key={criterion.key}>{draft.weights[criterion.key]}</th>)}
-                <th>Σ {totalWeight}</th>
+                <th scope="col" className="matrix-tech-col">APPLIED WEIGHT</th>
+                {CRITERIA.map((criterion) => <th scope="col" key={criterion.key} className="matrix-criterion-cell">{draft.weights[criterion.key]}</th>)}
+                <th scope="col" className="matrix-score-cell">Σ {totalWeight}</th>
               </tr>
             </thead>
             <tbody>
               {results.map((tech, index) => (
                 <tr key={tech.id} className={index === 0 ? 'matrix-best' : ''}>
-                  <td>
+                  <th scope="row" className="matrix-tech-col">
                     <strong>{tech.name}</strong>
                     <span className="matrix-group">{tech.group}</span>
-                  </td>
+                  </th>
                   {CRITERIA.map((criterion) => (
-                    <td key={criterion.key}>
+                    <td key={criterion.key} className="matrix-criterion-cell">
                       <input
                         className="score-input"
                         type="number" min="1" max="5" step="1"
+                        inputMode="numeric"
                         value={draft.scores[tech.id]?.[criterion.key] ?? 1}
                         onChange={(event) => setScore(tech.id, criterion.key, event.target.value)}
                         aria-label={`${tech.name} ${criterion.label} score`}
                       />
                     </td>
                   ))}
-                  <td><strong className={index === 0 ? 'red' : ''}>{num(tech.score, 2)}</strong></td>
+                  <td className="matrix-score-cell"><strong className={index === 0 ? 'red' : ''}>{num(tech.score, 2)}</strong></td>
                 </tr>
               ))}
             </tbody>
@@ -173,7 +203,8 @@ export default function Technology() {
         </Panel>
       </div>
 
-      <SectionTitle number="04" title="COST & RESOURCE INDICATORS" note={`Annual basis: ${num(annualWetTonnes, 0)} t/year wet sludge projected from the latest generation record. Planning estimates only.`} />
+      <SectionTitle number="04" title="COST & RESOURCE INDICATORS" note={`Annual basis: ${num(annualWetTonnes, 0)} t/year wet sludge projected from the latest generation record. Reference figures require site verification.`} />
+      {generation.error && <p className="data-status data-status-error">{generation.error}</p>}
       <Panel label="TABLE / 01" title="INDICATIVE RESOURCE COMPARISON">
         <DataTable
           rows={results.map((tech) => ({

@@ -15,3 +15,9 @@ data/
 # Environment files
 .env
 .env.*
+!.env.example
+.venv/
+.DS_Store
+Thumbs.db
+.coverage
+htmlcov/
